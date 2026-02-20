@@ -2,7 +2,7 @@
 ---
 
 
-# EasyLoRa (Powered by LoRaPlat)
+# EasyLoRa 
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-STM32%20%7C%20ESP32%20%7C%20Any%20MCU-green.svg)
@@ -37,24 +37,55 @@
 
 ## 3. 依赖说明 (Dependencies)
 
-EasyLoRa 对硬件资源要求极低，理论上支持所有 32 位及部分 8 位 MCU。
+EasyLoRa 采用分层设计，移植时需满足以下软件接口与硬件模组要求。
 
-*   **硬件依赖**:
-    *   任意支持 UART 的 MCU (STM32, ESP32, MSP430 等)。
-    *   UART LoRa 模组 (推荐 ATK-LORA-01, Ebyte E32 等支持透传/定点模式的模组)。
-*   **软件依赖**:
-    *   C99 标准编译器。
-    *   约 2.5KB RAM (可裁剪)。
+### 3.1 软件接口依赖 (Software Interfaces)
 
-👉 **详细移植要求请参考**: [通用移植指南](./docs/porting_guide.md)
+移植 EasyLoRa 仅需适配以下三层接口，无需修改核心代码：
+
+*   **OSAL 依赖 (底层基石)**
+    *   **必须实现**: `GetTick` (毫秒级时基), `DelayMs` (阻塞延时), `Enter/ExitCritical` (临界区保护)。
+    *   **可选实现**: `Log` (调试日志), `CompensateTick` (低功耗休眠补偿)。
+    *   *适配文件: `lora_osal.c`*
+
+*   **Port 层依赖 (硬件抽象)**
+    *   **接口定义**: `lora_port.h` 定义了标准硬件操作接口。
+    *   **用户实现**: 需提供 `lora_port.c`，实现 UART 字节收发 (推荐 DMA/中断环形缓冲)、GPIO 控制 (AUX/MD0/RST)。
+    *   *适配文件: `lora_port.c`*
+
+*   **Service 层依赖 (业务回调)**
+    *   **机制**: 通过 `LoRa_Callback_t` 结构体向业务层索要功能支持。
+    *   **内容**:
+        *   `OnRecvData`: 接收数据回调。
+        *   `OnEvent`: 系统事件通知 (如发送完成、初始化成功)。
+        *   `Save/LoadConfig`: NVS/Flash 读写接口 (用于参数掉电保存)。
+        *   `SystemReset`: 系统复位接口 (用于 OTA 重启或错误自愈)。
+
+### 3.2 LoRa 模组硬性要求 (Module Requirements)
+
+EasyLoRa 是基于 **UART AT 指令** 的中间件，所选用的 LoRa 模组 **必须** 具备以下特性：
+
+| 特性 | 要求等级 | 说明 |
+| :--- | :--- | :--- |
+| **UART 接口** | **必须** | 支持标准串口通信 (波特率通常为 9600/115200)。 |
+| **透传模式** | **必须** | 支持透明传输 (Transparent Mode)，即“发什么收什么”，不自动添加私有协议头。 |
+| **定点模式** | **推荐** | 支持 **Fixed Transmission (定点传输)**。即发送数据前先发送 3 字节 (高位地址+低位地址+信道)，模组根据地址自动过滤空中数据。**若不支持，将无法使用低功耗唤醒和硬件级地址过滤功能。** （1）|
+| **AUX 引脚** | **推荐** | 模组需提供 Busy/Ready 状态引脚 (如 Ebyte 的 AUX)。**若不支持，将无法准确判断发送完成时机，只能依赖延时估算。** |
+| **参数配置** | **必须** | 支持通过 AT 指令或特定时序修改：**信道 (Channel)**、**空速 (Air Rate)**、**功率 (Power)**。 |
+| **休眠控制** | **可选** | 支持通过引脚 (如 MD0/M1) 控制模组进入休眠/配置模式。 |
+
+> ✅ **已验证模组**: 正点原子 ATK-LORA-01 (SX1278)。
+
+（1）该定点模式的封包逻辑仅针对正点原子 ATK-LORA-01。
 
 ---
+
 
 ## 4. 快速开始 (Quick Start)
 
 ### 第一步：获取代码
 ```bash
-git clone https://github.com/YourName/EasyLoRa.git
+git clone https://github.com/longjinghuang2004/EasyLoRa
 ```
 
 ### 第二步：适配接口 (Porting)
