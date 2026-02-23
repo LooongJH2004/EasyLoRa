@@ -164,7 +164,7 @@ uint16_t LoRa_Manager_Buffer_PullFromPort(void) {
         if (len == 0) break;
         
         // [新增] 打印接收到的原始数据
-        //LORA_HEXDUMP("RX RAW", temp_buf, len);
+        LORA_HEXDUMP("RX RAW", temp_buf, len);
         
         // RX 仅由单线程 Run 调用，不需要加锁
         LoRa_RingBuffer_Write(&s_RxRing, temp_buf, len);

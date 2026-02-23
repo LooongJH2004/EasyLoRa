@@ -10,7 +10,7 @@
 > *   **编译器**: ARMCC / GCC (Optimization -O2)
 > *   **平台**: STM32F103 (Cortex-M3)
 > *   **配置**: 默认配置 (Default Config)
-> *   **范围**: 仅统计 `src/` 下的核心代码，**不包含** 用户移植层 (`lora_port.c`) 定义的硬件 DMA 缓冲区。
+> *   **范围**: 仅统计 `src/` 下的核心代码，**不包含** 用户移植层 (`lora_port.c`) 中定义的 **DMA 收发 RAM 缓冲区** (即供 DMA 外设搬运数据的目标/源数组)。
 
 
 ---
