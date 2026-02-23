@@ -2,9 +2,8 @@
   ******************************************************************************
   * @file    main.c
   * @author  LoRaPlat Team
-  * @brief   LoRaPlat V3.8 综合测试例程 (遥控 LED + 安全指令)
-  * @version V1.0
-  * @date    2023-10-27
+  * @brief   EasyLoRa 综合测试例程 (适配新版 API)
+  * @note    功能：双机互控 LED + 本地 CMD 指令解析 + 加密通信
   ******************************************************************************
   */
 
@@ -13,34 +12,37 @@
 #include "Serial.h"
 #include "LED.h"
 #include "Flash.h"
+
+// [变更] 仅引入 Service 层头文件，不再直接引用 Manager
 #include "lora_service.h" 
 #include "lora_service_command.h" 
-#include "lora_manager.h"      
+#include "lora_port.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lora_port.h"
-
-volatile uint8_t g_TimeoutFlag;
+// 外部依赖
 extern void Demo_OSAL_Init(void);
+
 // ============================================================================
-// [配置区域] 请根据烧录目标修改此处
+// [配置区域]
 // ============================================================================
 // 1 = 主机 (Master): 发送控制指令
 // 2 = 从机 (Slave):  执行动作 (亮灯)
 #define DEVICE_ROLE     1
 
-// 目标设备 ID (主机发给从机，从机发给主机)
+// 目标设备 ID
 #define TARGET_ID       ((DEVICE_ROLE == 1) ? 2 : 1)
 
-// 默认安全令牌 (用于 CMD 指令鉴权)
+// 默认安全令牌
 #define DEFAULT_TOKEN   0x00000000
 
 // ============================================================================
-// 1. 业务层加密实现 (示例：简单异或)
+// 1. 业务层加密实现 (简单异或示例)
 // ============================================================================
 uint16_t App_XOR_Crypt(const uint8_t *in, uint16_t len, uint8_t *out) {
+    // 获取当前配置中的 Token 作为密钥
     uint32_t key = LoRa_Service_GetConfig()->token;
     for(int i=0; i<len; i++) {
         out[i] = in[i] ^ (uint8_t)((key >> ((i % 4) * 8)) & 0xFF);
@@ -61,52 +63,57 @@ void Adapter_SystemReset(void)                    { NVIC_SystemReset(); }
 
 // [核心] 接收数据回调
 void Adapter_OnRecvData(uint16_t src_id, const uint8_t *data, uint16_t len, LoRa_RxMeta_t *meta) {
-    // 1. 打印日志 (此时 data 已经是解密后的明文)
+    // 1. 打印日志 (data 已自动解密)
     Serial_Printf("[RX] From 0x%04X (RSSI:%d): %.*s\r\n", src_id, meta->rssi, len, data);
     
-    // 2. 业务逻辑处理 (Business Logic)
-    // ---------------------------------------------------------
-    // 场景 A: 远程 LED 控制
+    // 2. 业务逻辑处理
+    // 注意：OTA 配置指令 (CMD:...) 现已由 Service 层内部拦截处理，此处仅处理业务指令
+    
     if (strncmp((char*)data, "LED_ON", 6) == 0) {
-        LED2_ON(); // 点亮板载 LED2
+        LED2_ON(); 
         Serial_Printf("[APP] Action: LED2 ON\r\n");
+        
+        // 可选：收到指令后回传一个状态 (Echo)
+        // LoRa_Service_Send((uint8_t*)"OK:ON", 5, src_id, LORA_OPT_UNCONFIRMED);
     }
     else if (strncmp((char*)data, "LED_OFF", 7) == 0) {
-        LED2_OFF(); // 熄灭板载 LED2
+        LED2_OFF(); 
         Serial_Printf("[APP] Action: LED2 OFF\r\n");
-    }
-    
-    // 场景 B: 平台管理指令 (CMD:Token:...)
-    // 注意：这是可选功能，由用户决定是否启用
-    else if (len > 4 && strncmp((char*)data, "CMD:", 4) == 0) {
-        char cmd_buf[128];
-        if (len < sizeof(cmd_buf)) {
-            memcpy(cmd_buf, data, len);
-            cmd_buf[len] = '\0';
-            if (LoRa_Service_Command_Process(cmd_buf)) {
-                Serial_Printf("[APP] Admin Command Executed.\r\n");
-            } else {
-                Serial_Printf("[APP] Admin Command Rejected.\r\n");
-            }
-        }
     }
 }
 
-// 事件回调
+// [变更] 事件回调适配新版枚举
 void Adapter_OnEvent(LoRa_Event_t event, void *arg) {
     switch(event) {
-        case LORA_EVENT_INIT_SUCCESS: Serial_Printf("[EVT] LoRa Init OK. Role: %d\r\n", DEVICE_ROLE); break;
-        case LORA_EVENT_TX_FINISHED:  Serial_Printf("[EVT] TX Finished (ACK OK).\r\n"); LED1_Turn(); break; // LED1 闪烁表示发送成功
-        case LORA_EVENT_TX_FAILED:    Serial_Printf("[EVT] TX Failed (Timeout).\r\n"); break;
-        case LORA_EVENT_BIND_SUCCESS: Serial_Printf("[EVT] Bind ID: %d\r\n", *(uint16_t*)arg); break;
+        case LORA_EVENT_INIT_SUCCESS: 
+            Serial_Printf("[EVT] LoRa Stack Ready. Role: %d\r\n", DEVICE_ROLE); 
+            break;
+            
+        case LORA_EVENT_TX_SUCCESS_ID:
+            // [新特性] 获取具体是哪条消息发送成功了
+            Serial_Printf("[EVT] Msg ID:%d Sent Success (ACKed).\r\n", *(LoRa_MsgID_t*)arg); 
+            LED1_Turn(); // 闪烁 LED1 表示通信成功
+            break;
+            
+        case LORA_EVENT_TX_FAILED_ID:    
+            Serial_Printf("[EVT] Msg ID:%d Failed (Timeout).\r\n", *(LoRa_MsgID_t*)arg); 
+            break;
+            
+        case LORA_EVENT_CONFIG_COMMIT:
+            Serial_Printf("[EVT] Config Saved to Flash.\r\n");
+            break;
+            
         default: break;
     }
 }
 
 const LoRa_Callback_t my_adapter = {
-    .SaveConfig = Adapter_SaveConfig, .LoadConfig = Adapter_LoadConfig,
-    .GetRandomSeed = Adapter_GetRandomSeed, .SystemReset = Adapter_SystemReset,
-    .OnRecvData = Adapter_OnRecvData, .OnEvent = Adapter_OnEvent
+    .SaveConfig = Adapter_SaveConfig, 
+    .LoadConfig = Adapter_LoadConfig,
+    .GetRandomSeed = Adapter_GetRandomSeed, 
+    .SystemReset = Adapter_SystemReset,
+    .OnRecvData = Adapter_OnRecvData, 
+    .OnEvent = Adapter_OnEvent
 };
 
 // ============================================================================
@@ -115,11 +122,13 @@ const LoRa_Callback_t my_adapter = {
 void Check_First_Run(void) {
     LoRa_Config_t cfg;
     Flash_ReadLoRaConfig(&cfg);
+    
+    // 简单的 Magic 校验
     if (cfg.magic != LORA_CFG_MAGIC) {
         Serial_Printf("[SYS] First Run, Writing Defaults...\r\n");
         memset(&cfg, 0, sizeof(cfg));
         cfg.magic = LORA_CFG_MAGIC;
-        cfg.net_id = DEVICE_ROLE; // 1 or 2
+        cfg.net_id = DEVICE_ROLE; 
         cfg.group_id = 100;
         cfg.token = DEFAULT_TOKEN;
         cfg.hw_addr = 0;
@@ -142,62 +151,66 @@ int main(void)
     LED_Init();
     Serial_Init();
     Demo_OSAL_Init();
-    Check_First_Run(); // 检查 Flash
-    
-    // 注册加密算法 (可选)
-    LoRa_Manager_RegisterCipher(&my_cipher);
+    Check_First_Run(); 
     
     // 启动协议栈
-    // 强制覆盖 NetID 以匹配当前 Role (方便调试，实际产品可去掉)
     LoRa_Service_Init(&my_adapter, DEVICE_ROLE); 
+    
+    // [变更] 注册加密算法移至 Service 层接口
+    LoRa_Service_RegisterCipher(&my_cipher);
 
-    Serial_Printf("\r\n=== LoRaPlat V3.8 Demo (ID: %d) ===\r\n", DEVICE_ROLE);
+    Serial_Printf("\r\n=== EasyLoRa V3.9 Demo (ID: %d) ===\r\n", DEVICE_ROLE);
     if (DEVICE_ROLE == 1) {
-        Serial_Printf("Type 'ON'  -> Send LED_ON to Slave\r\n");
-        Serial_Printf("Type 'OFF' -> Send LED_OFF to Slave\r\n");
+        Serial_Printf("Type 'ON'  -> Send LED_ON (Confirmed)\r\n");
+        Serial_Printf("Type 'OFF' -> Send LED_OFF (Confirmed)\r\n");
     }
-    Serial_Printf("Type 'CMD:00000000:INFO' -> Check Config\r\n");
+    Serial_Printf("Type 'CMD:00000000:INFO' -> Check Local Config\r\n");
 
     char input_buf[128];
+    char resp_buf[128]; // [变更] 新增响应缓冲区
     uint32_t last_heartbeat = 0;
 
     while (1)
     {
-        // 1. 协议栈驱动
+        // 1. 协议栈驱动 (包含自动重连、软重启逻辑)
         LoRa_Service_Run();
 
-        // 2. PC 串口指令处理 (用户输入)
+        // 2. PC 串口指令处理
         if (Serial_GetRxPacket(input_buf, sizeof(input_buf))) {
             Serial_Printf("[PC] Input: %s\r\n", input_buf);
             
             // --- 业务指令 (发送给对方) ---
             if (strcmp(input_buf, "ON") == 0) {
-                if (LoRa_Service_Send((uint8_t*)"LED_ON", 6, TARGET_ID))
-                    Serial_Printf(" -> Sending LED_ON...\r\n");
-                else
-                    Serial_Printf(" -> Send Failed (Busy)\r\n");
+                // [变更] 使用 LORA_OPT_CONFIRMED 明确指定需要 ACK
+                LoRa_MsgID_t id = LoRa_Service_Send((uint8_t*)"LED_ON", 6, TARGET_ID, LORA_OPT_CONFIRMED);
+                if (id > 0) Serial_Printf(" -> Enqueued ID:%d\r\n", id);
+                else        Serial_Printf(" -> Send Failed (Busy)\r\n");
             }
             else if (strcmp(input_buf, "OFF") == 0) {
-                if (LoRa_Service_Send((uint8_t*)"LED_OFF", 7, TARGET_ID))
-                    Serial_Printf(" -> Sending LED_OFF...\r\n");
-                else
-                    Serial_Printf(" -> Send Failed (Busy)\r\n");
+                LoRa_MsgID_t id = LoRa_Service_Send((uint8_t*)"LED_OFF", 7, TARGET_ID, LORA_OPT_CONFIRMED);
+                if (id > 0) Serial_Printf(" -> Enqueued ID:%d\r\n", id);
+                else        Serial_Printf(" -> Send Failed (Busy)\r\n");
             }
             
             // --- 本地管理指令 (配置自己) ---
             // 格式: CMD:Token:Command
             else if (strncmp(input_buf, "CMD:", 4) == 0) {
-                if (LoRa_Service_Command_Process(input_buf))
-                    Serial_Printf(" -> Admin Cmd Executed.\r\n");
-                else
-                    Serial_Printf(" -> Admin Cmd Failed.\r\n");
+                // [变更] 传入 resp_buf 以获取执行结果
+                if (LoRa_Service_Command_Process(input_buf, resp_buf, sizeof(resp_buf))) {
+                    Serial_Printf(" -> CMD Result: %s\r\n", resp_buf);
+                } else {
+                    Serial_Printf(" -> CMD Ignored (Auth Fail or Format Err)\r\n");
+                }
             }
         }
 
-        // 3. 心跳 (仅 LED1 闪烁，LED2 用于业务指示)
+        // 3. 心跳 (LED1 闪烁)
         if (GetTick() - last_heartbeat > 1000) {
             last_heartbeat = GetTick();
-            LED1_Turn(); 
+            // 仅当协议栈空闲时才闪烁，辅助观察忙闲状态
+            if (!LoRa_Service_IsSendingBusy()) {
+                LED1_Turn(); 
+            }
         }
     }
 }
