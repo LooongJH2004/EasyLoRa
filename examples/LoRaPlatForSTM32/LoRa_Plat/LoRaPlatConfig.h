@@ -182,12 +182,6 @@
  */
 #define LORA_BROADCAST_INTERVAL 50
 
-/**
- * @brief  去重记录有效期 (ms)
- * @note   超过此时间的去重记录将被视为过期，可以被新包覆盖。
- * @used_in lora_manager_fsm.c
- */
-#define LORA_DEDUP_TTL_MS       5000
 
 
 // ============================================================================
