@@ -5,6 +5,10 @@
   * @brief   LoRa 业务服务层实现 (V3.9.4 Decoupled)
   *          集成 OTA 拦截、内部自举软重启、动态 ACK 路由。
   *          已适配 Manager 层的回调机制，不再直接依赖 FSM。
+  * Copyright (c) [2026] [LongJingHuang
+  *
+  * This software is licensed under the MIT License.
+  * See the LICENSE file for more details.
   ******************************************************************************
   */
 
