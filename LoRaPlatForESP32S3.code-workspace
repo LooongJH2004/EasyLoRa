@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "LoRaPlatForESP32S3"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {}
+}

@@ -282,23 +282,28 @@ void LoRa_Service_NotifyEvent(LoRa_Event_t event, void *arg) {
 }
 
 // [修改] 现有的 IsBusy 保持不变，仅检查业务逻辑
-bool LoRa_Service_IsBusy(void) {
-    return LoRa_Manager_IsBusy();
+bool LoRa_Service_IsSendingBusy(void) {
+    return LoRa_Manager_IsSendingBusy();
 }
 
 // [新增] CanSleep 实现
 bool LoRa_Service_CanSleep(void) {
-    // 1. 检查业务逻辑层 (Manager FSM, Queues)
-    if (LoRa_Manager_IsBusy()) return false;
+    // 1. 检查发送业务逻辑：如果有未完成的发送任务（如等待 ACK），不能睡
+    if (LoRa_Service_IsSendingBusy()) { 
+        return false; 
+    }
 
-    // 2. 检查物理驱动层 (Driver AUX pin)
-    // 如果模组正在空中发送或接收，AUX 会拉高，此时不能睡
-    if (LoRa_Driver_IsBusy()) return false;
+    // 2. 检查物理层状态：如果模组正在空中收发数据（AUX 高），不能睡
+    //    注意：这里不仅包含发送，也包含接收。
+    //    如果模组正在接收数据，IsSendingBusy 是 false，但 Driver_IsBusy 是 true。
+    if (LoRa_Driver_IsBusy()) {
+        return false;
+    }
 
-    // 3. 检查 Port 层硬件事件 (Interrupt Flags)
-    // 如果刚才 Run() 之后又来了中断（如收到新数据），这里返回 true，阻止休眠
-    // CheckAndClear 会清除标志，确保下一次循环能正确判断
-    if (LoRa_Port_CheckAndClearHwEvent()) return false;
+    // 3. 检查是否有未处理的接收事件
+    if (LoRa_Port_CheckAndClearHwEvent()) {
+        return false;
+    }
 
     return true;
 }

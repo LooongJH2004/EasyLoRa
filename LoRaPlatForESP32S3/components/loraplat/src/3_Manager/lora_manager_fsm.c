@@ -300,7 +300,7 @@ uint32_t LoRa_Manager_FSM_GetNextTimeout(void) {
 }
 
 // [修复] 实现了 IsBusy
-bool LoRa_Manager_FSM_IsBusy(void) {
+bool LoRa_Manager_FSM_IsSendingBusy(void) {
     // 只要状态不是 IDLE，或者有挂起的事件未处理，都视为忙
     return (s_FSM.state != LORA_FSM_IDLE) || (s_PendingOutput.Event != FSM_EVT_NONE);
 }

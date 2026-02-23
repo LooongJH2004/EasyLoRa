@@ -91,7 +91,7 @@ bool LoRa_Manager_FSM_Send(const uint8_t *payload, uint16_t len, uint16_t target
 /**
  * @brief  查询是否忙碌
  */
-bool LoRa_Manager_FSM_IsBusy(void);
+bool LoRa_Manager_FSM_IsSendingBusy(void);
 
 /**
  * @brief  获取距离下一次超时的剩余时间 (Tickless 核心)

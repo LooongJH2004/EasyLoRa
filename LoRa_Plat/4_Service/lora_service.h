@@ -163,7 +163,7 @@ uint32_t LoRa_Service_GetSleepDuration(void);
  * @brief  查询是否忙碌 (包含发送队列、重传等待等)
  * @return true=忙, false=空闲 (可休眠)
  */
-bool LoRa_Service_IsBusy(void);
+bool LoRa_Service_IsSendingBusy(void);
 
 /**
  * @brief  注册安全算法 (透传给 Manager 层)

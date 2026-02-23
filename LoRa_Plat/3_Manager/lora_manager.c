@@ -67,7 +67,7 @@ void LoRa_Manager_RegisterCipher(const LoRa_Cipher_t *cipher) {
 }
 
 static void _ProcessTxQueue(void) {
-    if (LoRa_Manager_FSM_IsBusy()) return;
+    if (LoRa_Manager_FSM_IsSendingBusy()) return;
     if (s_TxQ_Count == 0) return;
     
     TxRequest_t *req = &s_TxQueue[s_TxQ_Tail];
@@ -173,8 +173,8 @@ LoRa_MsgID_t LoRa_Manager_Send(const uint8_t *payload, uint16_t len, uint16_t ta
     return ret_id;
 }
 
-bool LoRa_Manager_IsBusy(void) {
-    return LoRa_Manager_FSM_IsBusy() || (s_TxQ_Count > 0);
+bool LoRa_Manager_IsSendingBusy(void) {
+    return LoRa_Manager_FSM_IsSendingBusy() || (s_TxQ_Count > 0);
 }
 
 uint32_t LoRa_Manager_GetSleepDuration(void) {

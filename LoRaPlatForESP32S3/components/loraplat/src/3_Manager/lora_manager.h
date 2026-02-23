@@ -77,7 +77,7 @@ LoRa_MsgID_t LoRa_Manager_Send(const uint8_t *payload, uint16_t len, uint16_t ta
 /**
  * @brief  查询是否忙碌
  */
-bool LoRa_Manager_IsBusy(void);
+bool LoRa_Manager_IsSendingBusy(void);
 
 /**
  * @brief  获取建议休眠时长 (Tickless)
