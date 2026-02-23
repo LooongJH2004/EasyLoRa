@@ -1,4 +1,4 @@
-#施工中
+
 ---
 
 
@@ -82,43 +82,6 @@ EasyLoRa 是基于 **UART AT 指令** 的中间件，所选用的 LoRa 模组 **
 
 ---
 
-
-
-### 🚀 第一步：如何在 GitHub 上创建下载链接
-
-您需要先在本地打包好文件，然后上传到 GitHub，最后获取链接。
-
-#### 1. 本地打包 (准备工作)
-请在您的电脑上，将两个示例工程分别打包成 ZIP 文件。
-*   建议文件名：`EasyLoRa_STM32_Keil_v1.0.zip` 和 `EasyLoRa_ESP32_IDF_v1.0.zip`。
-*   **注意**：确保压缩包里包含了 `src/` 下的核心代码（如果示例工程是引用外部路径的，请把核心代码复制进压缩包，确保用户解压就能编译）。
-
-#### 2. 创建 Release (发行版)
-1.  打开您的 GitHub 仓库主页。
-2.  在右侧边栏找到 **"Releases"**，点击进入。
-3.  点击右上角的 **"Draft a new release"** (创建新发行版)。
-4.  **Choose a tag**: 输入 `v1.0.0` (或者 `v0.1.0`)，点击 "Create new tag"。
-5.  **Release title**: 输入标题，例如 `EasyLoRa v1.0.0 - Initial Release`。
-6.  **Describe this release**: 简单写几句，例如“首次发布，包含 STM32 和 ESP32 示例”。
-
-#### 3. 上传附件 (关键步骤)
-在页面底部的 **"Attach binaries by dropping them here"** 区域：
-*   将您刚才打包好的两个 ZIP 文件拖进去。
-*   等待上传进度条完成。
-
-#### 4. 发布并获取链接
-1.  点击绿色的 **"Publish release"** 按钮。
-2.  发布成功后，您会看到版本页面。在 **Assets** 区域，您会看到刚才上传的 ZIP 文件。
-3.  **右键点击** ZIP 文件名，选择 **"复制链接地址"** (Copy link address)。
-    *   *链接格式通常是：`https://github.com/用户名/仓库名/releases/download/v1.0.0/文件名.zip`*
-
----
-
-### 📝 第二步：更新 README.md 第 4 部分
-
-将您刚才复制的链接，填入下方的表格中。同时，我已将引脚说明整合进了这一部分。
-
-*(请复制以下 Markdown 代码到您的 README 中)*
 
 ## 4. 快速开始 (Quick Start)
 
