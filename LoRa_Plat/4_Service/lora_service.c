@@ -5,10 +5,6 @@
   * @brief   LoRa 业务服务层实现 (V3.9.4 Decoupled)
   *          集成 OTA 拦截、内部自举软重启、动态 ACK 路由。
   *          已适配 Manager 层的回调机制，不再直接依赖 FSM。
-  * Copyright (c) [2026] [LongJingHuang
-  *
-  * This software is licensed under the MIT License.
-  * See the LICENSE file for more details.
   ******************************************************************************
   */
 
@@ -59,8 +55,10 @@ static void _Service_OnRecv(uint8_t *data, uint16_t len, uint16_t src_id) {
     if (len > 4 && memcmp(data, "CMD:", 4) == 0) {
         // [优化] 将栈变量改为静态变量，避免栈溢出 (合计约 200 字节)
         // 注意：这使得该函数不可重入，但在裸机环境下是安全的
-        static char s_CmdCopyBuf[128];
-        static char s_RespBuf[64];
+		//最新版本去除了静态变量的设置，改为了可重入。
+			
+        char s_CmdCopyBuf[128];
+        char s_RespBuf[64];
         
         uint16_t copy_len = (len < 127) ? len : 127;
         memcpy(s_CmdCopyBuf, data, copy_len);

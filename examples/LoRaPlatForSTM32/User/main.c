@@ -168,28 +168,33 @@ int main(void)
     char resp_buf[128]; // 用于本地指令回显
     uint32_t last_heartbeat = 0;
 
+    uint32_t last_sleep_log = 0; // [新增] 用于控制休眠日志打印频率
+
     while (1)
     {
-        // 1. 协议栈驱动 (内部处理软重启)
+        // ============================================================
+        // 1. 协议栈驱动 (核心业务)
+        // ============================================================
+        // 内部会自动处理接收、状态机流转、超时重传等
         LoRa_Service_Run();
 
-        // 2. PC 串口指令处理 (用户输入)
+        // ============================================================
+        // 2. PC 串口指令处理 (用户交互)
+        // ============================================================
         if (Serial_GetRxPacket(input_buf, sizeof(input_buf))) {
             Serial_Printf("[PC] Input: %s\r\n", input_buf);
             
             // --- 本地管理指令 (配置自己) ---
             if (strncmp(input_buf, "CMD:", 4) == 0) {
-                // 本地调用也使用新的接口
                 if (LoRa_Service_Command_Process(input_buf, resp_buf, sizeof(resp_buf))) {
                     Serial_Printf(" -> CMD Result: %s\r\n", resp_buf);
                 } else {
                     Serial_Printf(" -> CMD Ignored (Auth Fail or Format Err)\r\n");
                 }
             }
-            // --- 通用数据发送 (发送给 ESP32) ---
+            // --- 通用数据发送 (发送给对端) ---
             else {
                 // [关键] 使用 LORA_OPT_CONFIRMED 确保可靠传输
-                // [修改] 获取并打印 MsgID
                 LoRa_MsgID_t msg_id = LoRa_Service_Send((uint8_t*)input_buf, strlen(input_buf), TARGET_ID, LORA_OPT_CONFIRMED);
                 
                 if (msg_id > 0) {
@@ -200,10 +205,47 @@ int main(void)
             }
         }
 
-        // 3. 心跳 (仅用于证明主循环在跑)
-        if (GetTick() - last_heartbeat > 2000) {
-            last_heartbeat = GetTick();
-            // Serial_Printf("."); 
+        // ============================================================
+        // 3. 状态指示 (心跳)
+        // ============================================================
+        // 仅当协议栈忙碌时（例如正在重传或等待ACK），LED1 才会快闪
+        // 平时 LED1 熄灭，表示系统空闲
+        if (LoRa_Service_IsSendingBusy()) {
+             if (GetTick() - last_heartbeat > 100) { // 忙碌时快闪
+                last_heartbeat = GetTick();
+                LED1_Turn(); 
+            }
+        } else {
+            LED1_OFF(); // 空闲时熄灭
+        }
+
+        // ============================================================
+        // 4. 低功耗休眠尝试 (新增部分)
+        // ============================================================
+        if (LoRa_Service_CanSleep()) {
+            // 这里的 CanSleep 返回 true 意味着：
+            // 1. 协议栈没有待发送的数据，也没有在等待 ACK。
+            // 2. 物理层没有正在进行的 DMA 传输。
+            // 3. 刚刚没有收到新的串口中断数据。
+
+            // [日志控制] 为了防止 SysTick (1ms) 频繁唤醒导致串口刷屏，
+            // 我们每隔 5 秒打印一次日志，证明系统正在进入 WFI。
+            if (GetTick() - last_sleep_log > 5000) {
+                last_sleep_log = GetTick();
+                Serial_Printf("[PWR] System Idle, Entering WFI (Sleep)...\r\n");
+                
+                // 确保串口数据发完再睡，否则最后一个字符可能乱码
+                // (假设 Serial_IsBusy 是你串口库提供的函数，如果没有可忽略或加个小延时)
+                // while(Serial_IsBusy()); 
+            }
+
+            // [核心指令] 等待中断 (Wait For Interrupt)
+            // CPU 将停止运行，直到发生中断 (如 SysTick, UART接收, 外部中断)
+            // 功耗会从 ~30mA 降至 ~10mA (取决于外设开启情况)
+            __WFI();
+            
+            // 代码执行到这里，说明刚刚发生了中断（被唤醒了）
+            // 循环回到开头，LoRa_Service_Run 会处理可能到来的数据
         }
     }
 }
