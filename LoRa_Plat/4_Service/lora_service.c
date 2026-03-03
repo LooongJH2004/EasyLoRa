@@ -55,7 +55,7 @@ static void _Service_OnRecv(uint8_t *data, uint16_t len, uint16_t src_id) {
     if (len > 4 && memcmp(data, "CMD:", 4) == 0) {
         // [优化] 将栈变量改为静态变量，避免栈溢出 (合计约 200 字节)
         // 注意：这使得该函数不可重入，但在裸机环境下是安全的
-		//最新版本去除了静态变量的设置，改为了可重入。
+			//最新版本去除了静态变量的设置，改为了可重入。
 			
         char s_CmdCopyBuf[128];
         char s_RespBuf[64];

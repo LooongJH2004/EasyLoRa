@@ -33,10 +33,18 @@ void LoRa_Port_ReInitUart(uint32_t baudrate);
 // ============================================================
 
 /**
- * @brief  设置 MD0 引脚 (模式控制)
- * @param  level: true=High(配置模式), false=Low(通信模式)
+ * @brief  设置 M0 引脚电平 (对应 ATK 的 MD0，或 Ebyte 的 M0)
+ * @param  level: true=High, false=Low
  */
-void LoRa_Port_SetMD0(bool level);
+void LoRa_Port_SetPin_M0(bool level);
+
+/**
+ * @brief  设置 M1 引脚电平 (对应 Ebyte 的 M1，ATK 模组忽略此引脚)
+ * @param  level: true=High, false=Low
+ */
+void LoRa_Port_SetPin_M1(bool level);
+
+
 
 /**
  * @brief  设置 RST 引脚 (复位控制)

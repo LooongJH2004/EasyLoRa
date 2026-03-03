@@ -50,8 +50,13 @@ void LoRa_Port_Init(uint32_t baudrate)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU; 
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-    // PA4 -> MD0
+    // PA4 -> M0 (原 MD0)
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    
+    // [新增] PA6 -> M1 (为 Ebyte 预留，若使用 ATK 模组，此引脚闲置)
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
     
@@ -129,8 +134,9 @@ void LoRa_Port_Init(uint32_t baudrate)
     USART_DMACmd(USART3, USART_DMAReq_Rx | USART_DMAReq_Tx, ENABLE);
     USART_Cmd(USART3, ENABLE);
     
-    // 初始状态同步
-    LoRa_Port_SetMD0(false);
+    // 初始状态同步 (将 M0 和 M1 都拉低，进入默认的通信模式)
+    LoRa_Port_SetPin_M0(false);
+    LoRa_Port_SetPin_M1(false);
     LoRa_Port_SyncAuxState(); 
 }
 
@@ -152,9 +158,14 @@ void LoRa_Port_ReInitUart(uint32_t baudrate) {
 //                    2. 引脚控制
 // ============================================================
 
-void LoRa_Port_SetMD0(bool level) {
+void LoRa_Port_SetPin_M0(bool level) {
     GPIO_WriteBit(GPIOA, GPIO_Pin_4, level ? Bit_SET : Bit_RESET);
 }
+
+void LoRa_Port_SetPin_M1(bool level) {
+    GPIO_WriteBit(GPIOA, GPIO_Pin_6, level ? Bit_SET : Bit_RESET);
+}
+
 
 void LoRa_Port_SetRST(bool level) {
     (void)level;

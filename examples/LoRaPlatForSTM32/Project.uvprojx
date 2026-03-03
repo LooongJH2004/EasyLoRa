@@ -884,16 +884,6 @@
               <FilePath>.\LoRa_Plat\2_Driver\lora_driver.h</FilePath>
             </File>
             <File>
-              <FileName>lora_driver_core.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\LoRa_Plat\2_Driver\lora_driver_core.c</FilePath>
-            </File>
-            <File>
-              <FileName>lora_driver_config.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\LoRa_Plat\2_Driver\lora_driver_config.c</FilePath>
-            </File>
-            <File>
               <FileName>lora_at_command_engine.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\LoRa_Plat\2_Driver\lora_at_command_engine.c</FilePath>
@@ -982,6 +972,21 @@
               <FileName>lora_service_monitor.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\LoRa_Plat\4_Service\lora_service_monitor.h</FilePath>
+            </File>
+            <File>
+              <FileName>lora_driver_ops.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\LoRa_Plat\2_Driver\lora_driver_ops.h</FilePath>
+            </File>
+            <File>
+              <FileName>driver_atk_lora01.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\LoRa_Plat\2_Driver\driver_atk_lora01.c</FilePath>
+            </File>
+            <File>
+              <FileName>driver_ebyte_e32.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\LoRa_Plat\2_Driver\driver_ebyte_e32.c</FilePath>
             </File>
           </Files>
         </Group>
