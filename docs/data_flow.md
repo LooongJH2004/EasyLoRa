@@ -76,10 +76,10 @@ graph TD
     end
 
     subgraph Manager Layer
-        TxQ[Tx Request Queue<br>(Struct Array)]
-        TxRing[Tx RingBuffer<br>(Serialized Bytes)]
-        AckRing[ACK RingBuffer<br>(High Priority)]
-        RxRing[Rx RingBuffer<br>(Raw Bytes)]
+        TxQ[Tx Request Queue - Struct Array]
+        TxRing[Tx RingBuffer - Serialized Bytes]
+        AckRing[ACK RingBuffer - High Priority]
+        RxRing[Rx RingBuffer - Raw Bytes]
         
         FSM[FSM Scheduler]
         Parser[Protocol Parser]
